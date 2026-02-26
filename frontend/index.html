@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<title>API Performance Analyzer</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+
+<link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+<div class="container mt-4">
+
+<h3>API Performance Analyzer</h3>
+
+<div class="card p-3 mb-3">
+
+<div class="row g-2">
+
+<div class="col-md-3">
+<input type="file" id="fileInput" class="form-control">
+</div>
+
+<div class="col-md-2">
+<button class="btn btn-primary w-100" onclick="upload()">Analyze</button>
+</div>
+
+<div class="col-md-2">
+<select id="methodFilter" class="form-select" onchange="applyFilter()">
+<option value="ALL">Method</option>
+</select>
+</div>
+
+<div class="col-md-2">
+<select id="serviceFilter" class="form-select" onchange="applyFilter()">
+<option value="ALL">Service</option>
+</select>
+</div>
+
+<div class="col-md-2">
+<select id="statusFilter" class="form-select" onchange="applyFilter()">
+<option value="ALL">Status</option>
+</select>
+</div>
+
+<div class="col-md-1">
+<button class="btn btn-success w-100" onclick="downloadReport()">Report</button>
+</div>
+
+</div>
+
+</div>
+
+
+<div class="card p-3 mb-3" id="summary"></div>
+
+
+<!-- GRAPH CARD -->
+<div class="card p-3 mb-3">
+
+<div class="d-flex justify-content-between mb-2">
+<h6 class="m-0">Response Time</h6>
+<button class="btn btn-sm btn-secondary" onclick="resetZoom()">Reset</button>
+</div>
+
+<!-- ONLY ADD THIS WRAPPER -->
+<div class="graph-scroll">
+    <canvas id="apiChart"></canvas>
+</div>
+
+</div>
+
+
+<div class="card p-3 mb-3">
+<h5>Error Messages (<span id="errorCount">0</span>)</h5>
+<div id="errorList" class="api-scroll"></div>
+</div>
+
+
+<div class="card p-3 mb-4">
+<h5>Failure Analysis (<span id="failureCount">0</span>)</h5>
+<div id="failureList" class="api-scroll"></div>
+</div>
+
+
+<footer class="footer">
+Internal Tool • For Team Use
+</footer>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

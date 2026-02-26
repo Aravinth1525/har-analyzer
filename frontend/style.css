@@ -1,0 +1,18 @@
+.footer {
+text-align: center;
+color: #777;
+font-size: 13px;
+margin-top: 50px;
+padding-bottom: 25px;
+}
+
+.api-scroll {
+max-height: 250px;
+overflow-y: auto;
+}
+
+/* Horizontal scroll like ChatGPT */
+.graph-scroll {
+overflow-x: auto;
+overflow-y: hidden;
+}
