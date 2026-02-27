@@ -9,7 +9,7 @@ const file = document.getElementById("fileInput").files[0];
 const formData = new FormData();
 formData.append("file", file);
 
-const res = await fetch("https://har-analyzer.onrender.com/upload", {
+const res = await fetch("/upload", {
 method: "POST",
 body: formData
 });
