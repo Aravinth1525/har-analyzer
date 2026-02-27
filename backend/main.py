@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import json
 
+from analyzer import analyze_har
+
 app = FastAPI()
 
 # ✅ CORS
@@ -32,4 +34,6 @@ async def upload(file: UploadFile = File(...)):
     content = await file.read()
     har = json.loads(content)
 
-    return {"message": "File received", "entries": len(har["log"]["entries"])}
+    result = analyze_har(har)
+
+    return result
