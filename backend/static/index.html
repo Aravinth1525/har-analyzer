@@ -383,7 +383,7 @@ async function upload() {
   const fd = new FormData();
   fd.append('file', file);
   try {
-    const res = await fetch('http://localhost:8000/upload', { method:'POST', body:fd });
+    const res = await fetch('https://har-analyzer.onrender.com/upload', { method:'POST', body:fd });
     if (!res.ok) throw new Error('Server returned ' + res.status);
     globalData = await res.json();
   } catch(e) { alert('Upload failed: ' + e.message); return; }
