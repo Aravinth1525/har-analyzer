@@ -28,7 +28,7 @@ def home():
 
 
 # ✅ Upload API
-@app.post("https://har-analyzer.onrender.com/upload")
+@app.post("/upload")
 async def upload(file: UploadFile = File(...)):
 
     content = await file.read()
