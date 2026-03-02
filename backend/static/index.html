@@ -6,6 +6,33 @@
 <title>API Performance Analyzer</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <style>
+
+  /* Loader */
+#loaderOverlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.55); backdrop-filter:blur(4px);
+  z-index:99999; flex-direction:column;
+  align-items:center; justify-content:center; gap:16px;
+}
+#loaderOverlay.show { display:flex; }
+.loader-spinner {
+  width:52px; height:52px;
+  border:4px solid rgba(255,255,255,0.15);
+  border-top-color:#3b82f6; border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loader-card {
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
+  border-radius:14px; padding:32px 40px;
+  display:flex; flex-direction:column; align-items:center; gap:14px; min-width:280px;
+}
+.loader-title { color:#fff; font-size:1rem; font-weight:600; }
+.loader-sub { color:rgba(255,255,255,0.5); font-size:.8rem; max-width:260px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.loader-bar-wrap { width:220px; height:4px; background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden; }
+.loader-bar { height:100%; width:40%; background:#3b82f6; animation:pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%{transform:translateX(-100%)} 100%{transform:translateX(650%)} }
+
 /* ── CSS Variables for theming ─────────────────────────────────────────── */
 :root {
   --bg:          #f0f2f5;
@@ -237,37 +264,6 @@ body { background: var(--bg); color: var(--text); margin:0; font-family: system-
   font-size:.72rem; font-weight:700; margin-left:6px; vertical-align:middle;
 }
 .section-count.zero { background:var(--input-border); }
-
-
-
-  /* Loader */
-#loaderOverlay {
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,0.55); backdrop-filter:blur(4px);
-  z-index:99999; flex-direction:column;
-  align-items:center; justify-content:center; gap:16px;
-}
-#loaderOverlay.show { display:flex; }
-.loader-spinner {
-  width:52px; height:52px;
-  border:4px solid rgba(255,255,255,0.15);
-  border-top-color:#3b82f6; border-radius:50%;
-  animation:spin .75s linear infinite;
-}
-@keyframes spin { to { transform:rotate(360deg); } }
-.loader-card {
-  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
-  border-radius:14px; padding:32px 40px;
-  display:flex; flex-direction:column; align-items:center; gap:14px; min-width:280px;
-}
-.loader-title { color:#fff; font-size:1rem; font-weight:600; }
-.loader-sub { color:rgba(255,255,255,0.5); font-size:.8rem; max-width:260px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.loader-bar-wrap { width:220px; height:4px; background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden; }
-.loader-bar { height:100%; width:40%; background:#3b82f6; animation:pulse 1.4s ease-in-out infinite; }
-@keyframes pulse { 0%{transform:translateX(-100%)} 100%{transform:translateX(650%)} }
-
-
-  
 </style>
 </head>
 <body>
@@ -380,6 +376,15 @@ body { background: var(--bg); color: var(--text); margin:0; font-family: system-
 
 <div id="chartTooltip"></div>
 
+<div id="loaderOverlay">
+  <div class="loader-card">
+    <div class="loader-spinner"></div>
+    <div class="loader-title">Analyzing HAR file…</div>
+    <div class="loader-sub" id="loaderFilename"></div>
+    <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
@@ -408,24 +413,6 @@ function toggleTheme() {
 }
 
 // ── Upload ────────────────────────────────────────────────────────────────────
-// async function upload() {
-//   const file = document.getElementById('fileInput').files[0];
-//   if (!file) { alert('Please choose a HAR file first.'); return; }
-//   const fd = new FormData();
-//   fd.append('file', file);
-//   try {
-//     const res = await fetch('https://har-analyzer.onrender.com/upload', { method:'POST', body:fd });
-//     if (!res.ok) throw new Error('Server returned ' + res.status);
-//     globalData = await res.json();
-//   } catch(e) { alert('Upload failed: ' + e.message); return; }
-//   ['filterCard','summaryCard','graphCard','errorCard','failureCard']
-//     .forEach(id => document.getElementById(id).classList.remove('d-none'));
-//   buildFilters();
-//   renderSummary();
-//   applyFilter();
-// }
-
-// After Loader
 async function upload() {
   const file = document.getElementById('fileInput').files[0];
   if (!file) { alert('Please choose a HAR file first.'); return; }
@@ -455,11 +442,9 @@ async function upload() {
   renderSummary();
   applyFilter();
 }
-  
 
-  
 
-  
+
 // ── Theme helpers ─────────────────────────────────────────────────────────────
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -860,19 +845,6 @@ function downloadReport() {
   link.download = 'api_report.csv';
   link.click();
 }
-
-
-<div id="loaderOverlay">
-  <div class="loader-card">
-    <div class="loader-spinner"></div>
-    <div class="loader-title">Analyzing HAR file…</div>
-    <div class="loader-sub" id="loaderFilename"></div>
-    <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
-  </div>
-</div>
-
-  
-  
 </script>
 </body>
 </html>
