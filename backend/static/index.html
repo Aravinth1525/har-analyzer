@@ -542,6 +542,38 @@ function renderSummary() {
     </div>`;
 }
 
+  function renderFilteredSummary(apis) {
+  if (!apis.length) {
+    document.getElementById('statGrid').innerHTML = `
+      <div class="stat-cell"><div class="stat-label">Total APIs</div><div class="stat-value">0</div></div>
+      <div class="stat-cell"><div class="stat-label">Average</div><div class="stat-value">— s</div></div>
+      <div class="stat-cell"><div class="stat-label">Slowest</div><div class="stat-value">— s</div></div>
+      <div class="stat-cell"><div class="stat-label">Errors</div><div class="stat-value">0</div></div>`;
+    return;
+  }
+  const total  = apis.length;
+  const avg    = apis.reduce((s, a) => s + a.time, 0) / total;
+  const max    = Math.max(...apis.map(a => a.time));
+  const failed = apis.filter(a => a.status >= 400).length;
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-cell">
+      <div class="stat-label">Total APIs</div>
+      <div class="stat-value">${total}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Average</div>
+      <div class="stat-value ${(avg/1000)>2?'amber':''}">${(avg/1000).toFixed(2)} s</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Slowest</div>
+      <div class="stat-value ${(max/1000)>5?'red':'amber'}">${(max/1000).toFixed(2)} s</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Errors</div>
+      <div class="stat-value ${failed>0?'red':''}">${failed}</div>
+    </div>`;
+}
+
 // ── Filter ────────────────────────────────────────────────────────────────────
 function getFilteredApis() {
   if (!globalData) return [];
@@ -555,6 +587,7 @@ function getFilteredApis() {
 }
 function applyFilter() {
   currentApis = getFilteredApis();
+  renderFilteredSummary(currentApis);
   setupChart(currentApis);
   renderErrors(currentApis);
   renderFailures(currentApis);
