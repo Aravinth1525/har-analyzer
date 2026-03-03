@@ -462,9 +462,28 @@ function toggleDD(e, id) {
   document.querySelectorAll('.dd-wrap').forEach(d => d.classList.remove('open'));
   if (!was) el.classList.add('open');
 }
-function buildMenu(menuId, badgeId, values) {
+function buildMenu(menuId, badgeId, values, withSearch) {
   const menu = document.getElementById(menuId);
   menu.innerHTML = '';
+
+  // Search box (service only)
+  if (withSearch) {
+    const searchWrap = document.createElement('div');
+    searchWrap.style.cssText = 'padding:6px 10px;border-bottom:1px solid var(--card-border);';
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search service…';
+    searchInput.style.cssText = 'width:100%;padding:4px 8px;font-size:.82rem;border:1px solid var(--input-border);border-radius:5px;background:var(--input-bg);color:var(--text);outline:none;';
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase();
+      menu.querySelectorAll('.dd-row[data-value]').forEach(row => {
+        row.style.display = row.dataset.value.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+    searchWrap.appendChild(searchInput);
+    menu.appendChild(searchWrap);
+  }
+
   const allLabel = document.createElement('label');
   allLabel.className = 'dd-row dd-all';
   const allChk = document.createElement('input');
@@ -472,8 +491,10 @@ function buildMenu(menuId, badgeId, values) {
   allLabel.appendChild(allChk);
   const allSpan = document.createElement('span'); allSpan.textContent = 'Select All';
   allLabel.appendChild(allSpan); menu.appendChild(allLabel);
+
   values.forEach(v => {
-    const lbl = document.createElement('label'); lbl.className = 'dd-row';
+    const lbl = document.createElement('label');
+    lbl.className = 'dd-row'; lbl.dataset.value = v;  // ← added data-value
     const chk = document.createElement('input');
     chk.type = 'checkbox'; chk.checked = true; chk.dataset.item = v;
     const sp = document.createElement('span'); sp.textContent = v;
@@ -505,9 +526,9 @@ function buildFilters() {
   const methods  = [...new Set(globalData.apis.map(a => a.method))].sort();
   const services = [...new Set(globalData.apis.map(a => { const p = a.endpoint.split('/')[1]; return p ? '/' + p : null; }).filter(Boolean))].sort();
   const statuses = [...new Set(globalData.apis.map(a => String(a.status)))].sort();
-  buildMenu('menu-method', 'badge-method', methods);
-  buildMenu('menu-service', 'badge-service', services);
-  buildMenu('menu-status', 'badge-status', statuses);
+  buildMenu('menu-method',  'badge-method',  methods,  false);
+  buildMenu('menu-service', 'badge-service', services, true);   // ← true adds search
+  buildMenu('menu-status',  'badge-status',  statuses, false);
 }
 function clearFilters() {
   ['menu-method','menu-service','menu-status'].forEach(menuId => {
