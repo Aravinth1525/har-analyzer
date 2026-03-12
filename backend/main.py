@@ -5,7 +5,13 @@ from fastapi.responses import FileResponse
 import json
 from analyzer import analyze_har
 
+<<<<<<< HEAD
 app = FastAPI(root_path="/har-analyzer")
+=======
+from analyzer import analyze_har
+
+app = FastAPI()
+>>>>>>> 014926307d90f753b1557877e9b544c76f7aae31
 
 # CORS
 app.add_middleware(
@@ -32,4 +38,8 @@ async def upload(file: UploadFile = File(...)):
 
     result = analyze_har(har)
 
+<<<<<<< HEAD
     return result
+=======
+    return result
+>>>>>>> 014926307d90f753b1557877e9b544c76f7aae31

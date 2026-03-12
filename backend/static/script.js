@@ -341,4 +341,8 @@ function downloadReport() {
   link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   link.download = 'api_report.csv';
   link.click();
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 014926307d90f753b1557877e9b544c76f7aae31
