@@ -465,7 +465,7 @@ async function upload() {
   document.getElementById('loaderOverlay').classList.add('show');
   const fd = new FormData(); fd.append('file', file);
   try {
-    const res = await fetch('http://localhost:8000/har-analyzer/upload', { method:'POST', body:fd });
+    const res = await fetch('/har-analyzer/upload', { method:'POST', body:fd });
     if (!res.ok) throw new Error('Server returned ' + res.status);
     globalData = await res.json();
   } catch(e) {
