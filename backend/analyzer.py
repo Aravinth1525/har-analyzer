@@ -4,8 +4,11 @@ import json
 
 def extract_endpoint(url):
     try:
-        parts = url.split("/")
-        return "/" + "/".join(parts[3:6])
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        if parsed.query:
+            return parsed.path + '?' + parsed.query
+        return parsed.path
     except:
         return url
 

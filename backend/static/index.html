@@ -1,101 +1,1037 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" data-theme="light">
 <head>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>API Performance Analyzer</title>
-
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+/* Loader */
+#loaderOverlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.55); backdrop-filter:blur(4px);
+  z-index:99999; flex-direction:column;
+  align-items:center; justify-content:center; gap:16px;
+}
+#loaderOverlay.show { display:flex; }
+.loader-spinner {
+  width:52px; height:52px;
+  border:4px solid rgba(255,255,255,0.15);
+  border-top-color:#3b82f6; border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loader-card {
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
+  border-radius:14px; padding:32px 40px;
+  display:flex; flex-direction:column; align-items:center; gap:14px; min-width:280px;
+}
+.loader-title { color:#fff; font-size:1rem; font-weight:600; }
+.loader-sub { color:rgba(255,255,255,0.5); font-size:.8rem; max-width:260px; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.loader-bar-wrap { width:220px; height:4px; background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden; }
+.loader-bar { height:100%; width:40%; background:#3b82f6; animation:barPulse 1.4s ease-in-out infinite; }
+@keyframes barPulse { 0%{transform:translateX(-100%)} 100%{transform:translateX(650%)} }
 
-<link rel="stylesheet" href="style.css">
+/* CSS Variables */
+:root {
+  --bg:          #f0f2f5;
+  --card-bg:     #ffffff;
+  --card-border: #e2e8f0;
+  --text:        #1e293b;
+  --text-muted:  #64748b;
+  --text-faint:  #94a3b8;
+  --input-bg:    #ffffff;
+  --input-border:#ced4da;
+  --btn-hover:   #f8fafc;
+  --dd-hover:    #f0f4ff;
+  --grid-line:   rgba(0,0,0,0.06);
+  --chart-bg:    #ffffff;
+  --chart-fill0: rgba(99,150,255,0.10);
+  --chart-fill1: rgba(99,150,255,0.00);
+  --scrollbar:   #cbd5e1;
+  --scrollbar-bg:#f1f5f9;
+}
+[data-theme="dark"] {
+  --bg:          #0f1117;
+  --card-bg:     #1a1d27;
+  --card-border: #2d3148;
+  --text:        #e2e8f0;
+  --text-muted:  #94a3b8;
+  --text-faint:  #4a5568;
+  --input-bg:    #252836;
+  --input-border:#3d4160;
+  --btn-hover:   #252836;
+  --dd-hover:    #252836;
+  --grid-line:   rgba(255,255,255,0.06);
+  --chart-bg:    #1a1d27;
+  --chart-fill0: rgba(99,150,255,0.08);
+  --chart-fill1: rgba(99,150,255,0.00);
+  --scrollbar:   #3d4160;
+  --scrollbar-bg:#252836;
+}
 
+*, *::before, *::after { box-sizing:border-box; transition: background-color .2s, color .2s, border-color .2s; }
+body { background: var(--bg); color: var(--text); margin:0; font-family: system-ui, -apple-system, sans-serif; }
+.card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+[data-theme="dark"] .card { box-shadow: 0 1px 8px rgba(0,0,0,.4); }
+
+/* Navbar */
+.navbar {
+  background: var(--card-bg); border-bottom: 1px solid var(--card-border);
+  padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-brand {
+  font-weight: 700; font-size: 1rem; color: var(--text);
+  display: flex; align-items: center; gap: 8px; text-decoration: none;
+}
+.nokia-badge {
+  font-size:.7rem; color: var(--text-faint); font-weight:500;
+  background: var(--bg); border:1px solid var(--card-border);
+  padding: 2px 8px; border-radius:20px;
+}
+.theme-toggle {
+  background: var(--bg); border: 1px solid var(--card-border);
+  border-radius: 20px; cursor: pointer;
+  width: 48px; height: 26px; position: relative; transition: background .2s;
+}
+.theme-toggle::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--text-muted); transition: left .2s, background .2s;
+}
+[data-theme="dark"] .theme-toggle::after { left: 25px; background: #f97316; }
+
+.main { max-width: 100%; margin: 0; padding: 20px 24px 40px; }
+
+.upload-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.form-control { background: var(--input-bg); border-color: var(--input-border); color: var(--text); }
+.form-control:focus { background: var(--input-bg); color: var(--text); border-color: #86b7fe; box-shadow: 0 0 0 3px rgba(13,110,253,.15); }
+
+/* Summary */
+.stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background: var(--card-border); border-radius:10px; overflow:hidden; }
+.stat-cell { background: var(--card-bg); padding:16px; text-align:center; }
+.stat-label { font-size:.75rem; color:var(--text-muted); font-weight:500; text-transform:uppercase; letter-spacing:.05em; }
+.stat-value { font-size:1.5rem; font-weight:700; color:var(--text); margin-top:2px; }
+.stat-value.red   { color:#ef4444; }
+.stat-value.amber { color:#f97316; }
+
+/* Filter bar */
+.filter-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.filter-label { font-size:.75rem; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; }
+
+/* ── Dropdown base ── */
+.dd-wrap { position:relative; display:inline-block; }
+.dd-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:5px 12px; border:1px solid var(--input-border); border-radius:6px;
+  background:var(--input-bg); font-size:.85rem; color:var(--text);
+  cursor:pointer; white-space:nowrap; transition: border-color .15s, box-shadow .15s;
+}
+.dd-btn:hover { border-color:#86b7fe; background:var(--btn-hover); }
+.dd-wrap.open .dd-btn { border-color:#0d6efd; box-shadow:0 0 0 3px rgba(13,110,253,.15); }
+.dd-arrow { font-size:.6rem; color:var(--text-faint); }
+.dd-badge {
+  display:none; align-items:center; justify-content:center;
+  min-width:18px; height:18px; padding:0 4px;
+  background:#0d6efd; color:#fff; border-radius:9px; font-size:.68rem; font-weight:700;
+}
+
+/* ── Standard filter dropdowns (Method, Status) — downward, simple scroll ── */
+.dd-menu {
+  display:none;
+  position:absolute; top:calc(100% + 5px); left:0;
+  min-width:160px; max-width:280px;
+  max-height:300px; overflow-y:auto;
+  background:var(--card-bg); border:1px solid var(--card-border); border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.18); z-index:9999; padding:4px 0;
+}
+.dd-wrap.open .dd-menu { display:block; }
+.dd-menu::-webkit-scrollbar { width:4px; }
+.dd-menu::-webkit-scrollbar-thumb { background:var(--scrollbar); border-radius:3px; }
+
+/* ── Service dropdown — downward, flex, sticky header (search + select-all) ── */
+#dd-service .dd-menu {
+  min-width:260px;
+  max-width:520px;
+  width:max-content;
+  max-height:340px;
+  overflow:hidden;          /* children manage their own scroll */
+  display:none;
+  flex-direction:column;
+  padding:0;
+}
+#dd-service.open .dd-menu { display:flex; }
+
+/* ── Preview dropdown — DOWNWARD, flex, scrollable rows + pinned search ── */
+#menu-preview {
+  position:absolute;
+  top:calc(100% + 5px);
+  bottom:auto;
+  left:0;
+  width:100%;
+  max-height:340px;
+  display:none;
+  flex-direction:column;
+  overflow:hidden;
+  padding:0;
+  background:var(--card-bg);
+  border:1px solid var(--card-border);
+  border-radius:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+  z-index:9999;
+}
+#dd-preview.open #menu-preview { display:flex; }
+
+/* rows */
+.dd-row {
+  display:flex; align-items:center; gap:10px; padding:8px 14px;
+  cursor:pointer; font-size:.85rem; color:var(--text); margin:0; user-select:none;
+  min-width:0; overflow:hidden; flex-shrink:0;
+}
+.dd-row:hover { background:var(--dd-hover); }
+.dd-row input[type=checkbox] { width:15px; height:15px; flex-shrink:0; accent-color:#0d6efd; cursor:pointer; }
+
+/* Graph */
+.graph-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; flex-wrap:wrap; gap:8px; }
+.graph-title { font-weight:600; font-size:.95rem; color:var(--text); }
+.graph-subtitle {
+  display:block; font-size:.75rem; color:var(--text-muted); margin-top:3px;
+  min-height:1.1em; font-family:monospace;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:700px;
+}
+.graph-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.legend-item { font-size:.78rem; color:var(--text-muted); display:flex; align-items:center; gap:5px; }
+.dot { display:inline-block; width:10px; height:10px; border-radius:2px; font-style:normal; flex-shrink:0; }
+.graph-container { position:relative; }
+.graph-outer {
+  width:100%; overflow-x:scroll; overflow-y:hidden;
+  border:1px solid var(--card-border); border-radius:8px; background:var(--chart-bg);
+  scrollbar-width:thin; scrollbar-color: var(--scrollbar) var(--scrollbar-bg);
+}
+.graph-outer::-webkit-scrollbar { height:7px; }
+.graph-outer::-webkit-scrollbar-track { background:var(--scrollbar-bg); }
+.graph-outer::-webkit-scrollbar-thumb { background:var(--scrollbar); border-radius:4px; }
+.graph-outer::-webkit-scrollbar-thumb:hover { background:var(--text-muted); }
+#chartWrapper { display:block; position:relative; }
+#apiCanvas { display:block; cursor:crosshair; }
+.y-axis-overlay {
+  position:absolute; top:0; right:0; width:56px; height:100%;
+  background:var(--chart-bg); border-left:1px solid var(--card-border);
+  border-radius:0 8px 8px 0; pointer-events:none; z-index:10;
+}
+#yAxisCanvas { display:block; }
+
+/* Lists */
+.list-scroll { max-height:220px; overflow-y:auto; }
+.list-item { padding:8px 0; border-bottom:1px solid var(--card-border); font-size:.85rem; line-height:1.6; }
+.list-item:last-child { border-bottom:none; }
+.method-badge {
+  display:inline-block; padding:1px 6px; border-radius:4px; font-size:.72rem;
+  font-weight:700; letter-spacing:.04em; margin-right:4px;
+}
+.method-GET    { background:#dbeafe; color:#1d4ed8; }
+.method-POST   { background:#dcfce7; color:#15803d; }
+.method-PUT    { background:#fef3c7; color:#b45309; }
+.method-DELETE { background:#fee2e2; color:#b91c1c; }
+.method-OTHER  { background:#f1f5f9; color:#475569; }
+[data-theme="dark"] .method-GET    { background:#1e3a5f; color:#93c5fd; }
+[data-theme="dark"] .method-POST   { background:#14532d; color:#86efac; }
+[data-theme="dark"] .method-PUT    { background:#451a03; color:#fcd34d; }
+[data-theme="dark"] .method-DELETE { background:#450a0a; color:#fca5a5; }
+[data-theme="dark"] .method-OTHER  { background:#1e293b; color:#94a3b8; }
+
+#chartTooltip {
+  position:fixed; display:none; pointer-events:none;
+  background:rgba(15,23,42,0.96); color:#f1f5f9;
+  border-radius:8px; padding:10px 14px; font-size:.8rem;
+  line-height:1.8; z-index:9999; max-width:480px;
+  box-shadow:0 4px 24px rgba(0,0,0,.4); border:1px solid rgba(255,255,255,.08);
+}
+[data-theme="dark"] #chartTooltip { background:rgba(30,32,48,0.98); border:1px solid rgba(255,255,255,.12); }
+
+.btn { transition: transform .1s, box-shadow .1s; }
+.btn:active { transform: scale(.97); }
+.btn-outline-secondary { color:var(--text-muted); border-color:var(--card-border); background:transparent; }
+.btn-outline-secondary:hover { background:var(--btn-hover); color:var(--text); border-color:var(--input-border); }
+
+.section-title { font-weight:600; font-size:.9rem; color:var(--text); margin-bottom:10px; }
+.section-count {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:22px; height:22px; padding:0 6px;
+  background:#ef4444; color:#fff; border-radius:11px;
+  font-size:.72rem; font-weight:700; margin-left:6px; vertical-align:middle;
+}
+.section-count.zero { background:var(--input-border); }
+</style>
 </head>
-
 <body>
 
-<div class="container mt-4">
+<nav class="navbar">
+  <a class="navbar-brand" href="#">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d6efd" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    API Performance Analyzer
+    <span class="nokia-badge">Nokia Internal v1.0.5</span>
+  </a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:.75rem;color:var(--text-faint);" id="themeLabel">&#9728;&#65039; Light</span>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"></button>
+  </div>
+</nav>
 
-<h3>API Performance Analyzer</h3>
+<div class="main">
 
-<div class="card p-3 mb-3">
+  <!-- Upload -->
+  <div class="card p-3 mb-3">
+    <div class="upload-row">
+      <div id="dropZone"
+        style="flex:1;min-width:260px;border:2px dashed var(--input-border);border-radius:8px;padding:10px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:border-color .2s,background .2s;"
+        onclick="document.getElementById('fileInput').click()"
+        ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dropFile(event)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-faint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span id="dropLabel" style="font-size:.85rem;color:var(--text-muted);">Drop .har file here or <u>browse</u></span>
+        <input type="file" id="fileInput" accept=".har" style="display:none;" onchange="fileChosen()">
+      </div>
+      <button class="btn btn-primary px-4" onclick="upload()">Analyze</button>
+      <button class="btn btn-success px-4" onclick="downloadReport()">Download Report</button>
+    </div>
+  </div>
 
-<div class="row g-2">
+  <!-- Filters -->
+  <div class="card p-3 mb-3 d-none" id="filterCard">
+    <div class="filter-bar">
+      <span class="filter-label">Filters</span>
+      <div class="dd-wrap" id="dd-method">
+        <button class="dd-btn" type="button" onclick="toggleDD(event,'dd-method')">
+          Method <span class="dd-badge" id="badge-method"></span><span class="dd-arrow">&#9660;</span>
+        </button>
+        <div class="dd-menu" id="menu-method"></div>
+      </div>
+      <div class="dd-wrap" id="dd-service">
+        <button class="dd-btn" type="button" onclick="toggleDD(event,'dd-service')">
+          URLs <span class="dd-badge" id="badge-service"></span><span class="dd-arrow">&#9660;</span>
+        </button>
+        <div class="dd-menu" id="menu-service"></div>
+      </div>
+      <div class="dd-wrap" id="dd-status">
+        <button class="dd-btn" type="button" onclick="toggleDD(event,'dd-status')">
+          Status <span class="dd-badge" id="badge-status"></span><span class="dd-arrow">&#9660;</span>
+        </button>
+        <div class="dd-menu" id="menu-status"></div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearFilters()">Clear All</button>
+    </div>
+  </div>
 
-<div class="col-md-3">
-<input type="file" id="fileInput" class="form-control">
+  <!-- Summary -->
+  <div class="mb-3 d-none" id="summaryCard">
+    <div class="stat-grid" id="statGrid"></div>
+  </div>
+
+  <!-- Graph -->
+  <div class="card p-3 mb-3 d-none" id="graphCard">
+    <div class="graph-header">
+      <div style="min-width:0;flex:1;">
+        <span class="graph-title">Response Time</span>
+        <span class="graph-subtitle" id="hoverInfo">Hover over chart to inspect an API call</span>
+      </div>
+      <div class="graph-actions">
+        <span class="legend-item"><i class="dot" style="background:#22c55e"></i>&lt;1s</span>
+        <span class="legend-item"><i class="dot" style="background:#f97316"></i>1&#8211;2s</span>
+        <span class="legend-item"><i class="dot" style="background:#ef4444"></i>&gt;2s</span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="resetZoom()">Reset Zoom</button>
+      </div>
+    </div>
+    <div class="graph-container">
+      <div class="graph-outer" id="graphOuter">
+        <div id="chartWrapper"><canvas id="apiCanvas"></canvas></div>
+      </div>
+      <div class="y-axis-overlay" id="yAxisOverlay">
+        <canvas id="yAxisCanvas"></canvas>
+      </div>
+    </div>
+    <div style="margin-top:6px;font-size:.72rem;color:var(--text-faint);">
+      Scroll to zoom &nbsp;&middot;&nbsp; Drag to pan &nbsp;&middot;&nbsp; Reset Zoom to restore
+    </div>
+  </div>
+
+  <!-- Errors -->
+  <div class="card p-3 mb-3 d-none" id="errorCard">
+    <div class="section-title">
+      Error Messages
+      <span class="section-count zero" id="errorCount">0</span>
+    </div>
+    <div id="errorList" class="list-scroll"></div>
+  </div>
+
+  <!-- API Response Preview -->
+  <div class="card p-3 mb-3 d-none" id="previewCard">
+    <div class="section-title">API Response Preview</div>
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+      <div class="dd-wrap" id="dd-preview" style="flex:1;">
+        <button class="dd-btn" type="button" onclick="toggleDD(event,'dd-preview')" style="width:100%;justify-content:space-between;">
+          <span id="previewLabel" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;text-align:left;">Select an API&#8230;</span>
+          <span class="dd-arrow" style="flex-shrink:0;margin-left:8px;">&#9660;</span>
+        </button>
+        <div id="menu-preview"></div>
+      </div>
+      <button class="btn btn-sm btn-outline-secondary" id="previewClearBtn" onclick="clearPreview()" style="display:none;flex-shrink:0;">&#10005; Clear</button>
+    </div>
+    <div id="previewContent" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span id="previewMethod" class="method-badge"></span>
+        <span id="previewEndpoint" style="font-size:.82rem;color:var(--text-muted);font-family:monospace;word-break:break-all;flex:1;"></span>
+        <span id="previewStatus" style="font-size:.78rem;font-weight:700;flex-shrink:0;"></span>
+        <span id="previewTime" style="font-size:.78rem;color:var(--text-faint);flex-shrink:0;"></span>
+      </div>
+      <pre id="previewJson" style="background:var(--bg);border:1px solid var(--card-border);border-radius:8px;padding:14px;font-size:.78rem;max-height:400px;overflow:auto;margin:0;color:var(--text);white-space:pre-wrap;word-break:break-all;"></pre>
+    </div>
+    <div id="previewEmpty" style="display:none;"></div>
+  </div>
+
 </div>
 
-<div class="col-md-2">
-<button class="btn btn-primary w-100" onclick="upload()">Analyze</button>
+
+<div id="chartTooltip"></div>
+<div id="loaderOverlay">
+  <div class="loader-card">
+    <div class="loader-spinner"></div>
+    <div class="loader-title">Analyzing HAR file&#8230;</div>
+    <div class="loader-sub" id="loaderFilename"></div>
+    <div class="loader-bar-wrap"><div class="loader-bar"></div></div>
+  </div>
 </div>
 
-<div class="col-md-2">
-<select id="methodFilter" class="form-select" onchange="applyFilter()">
-<option value="ALL">Method</option>
-</select>
-</div>
+<script>
+'use strict';
 
-<div class="col-md-2">
-<select id="serviceFilter" class="form-select" onchange="applyFilter()">
-<option value="ALL">Service</option>
-</select>
-</div>
+let globalData  = null;
+let currentApis = [];
 
-<div class="col-md-2">
-<select id="statusFilter" class="form-select" onchange="applyFilter()">
-<option value="ALL">Status</option>
-</select>
-</div>
+const CHART_H   = 300;
+const Y_AXIS_W  = 56;
+const PAD       = { top:16, right:8, bottom:16, left:12 };
+const PX_PER_PT = 12;
 
-<div class="col-md-1">
-<button class="btn btn-success w-100" onclick="downloadReport()">Report</button>
-</div>
+let viewStart     = 0;
+let viewCount     = 0;
+let isDragging    = false;
+let dragStartX    = 0;
+let dragStartView = 0;
+let lastYMax      = 1;
 
-</div>
+// ── Theme ─────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html   = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeLabel').textContent = isDark ? '\u2600\ufe0f Light' : '\ud83c\udf19 Dark';
+  if (currentApis.length) { redraw(currentApis); drawYAxis(currentApis); }
+}
 
-</div>
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+function fileChosen() {
+  const file = document.getElementById('fileInput').files[0];
+  if (file) document.getElementById('dropLabel').textContent = file.name;
+}
+function dragOver(e) {
+  e.preventDefault();
+  const z = document.getElementById('dropZone');
+  z.style.borderColor = '#0d6efd'; z.style.background = 'rgba(13,110,253,0.05)';
+}
+function dragLeave() {
+  const z = document.getElementById('dropZone');
+  z.style.borderColor = ''; z.style.background = '';
+}
+function dropFile(e) {
+  e.preventDefault(); dragLeave();
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.name.endsWith('.har')) { alert('Please drop a valid .har file.'); return; }
+  const dt = new DataTransfer(); dt.items.add(file);
+  document.getElementById('fileInput').files = dt.files;
+  document.getElementById('dropLabel').textContent = file.name;
+}
 
+// ── Upload ────────────────────────────────────────────────────────────────────
+async function upload() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) { alert('Please choose a HAR file first.'); return; }
+  document.getElementById('loaderFilename').textContent = file.name;
+  document.getElementById('loaderOverlay').classList.add('show');
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const res = await fetch('http://localhost:8000/har-analyzer/upload', { method:'POST', body:fd });
+    if (!res.ok) throw new Error('Server returned ' + res.status);
+    globalData = await res.json();
+  } catch(e) {
+    document.getElementById('loaderOverlay').classList.remove('show');
+    alert('Upload failed: ' + e.message); return;
+  }
+  document.getElementById('loaderOverlay').classList.remove('show');
+  ['filterCard','summaryCard','graphCard','errorCard','previewCard']
+    .forEach(id => document.getElementById(id).classList.remove('d-none'));
+  buildFilters(); renderSummary(); applyFilter();
+}
 
-<div class="card p-3 mb-3" id="summary"></div>
+function cssVar(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
 
+// ── Dropdowns ─────────────────────────────────────────────────────────────────
+// Close all when clicking outside any .dd-wrap
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dd-wrap'))
+    document.querySelectorAll('.dd-wrap.open').forEach(d => d.classList.remove('open'));
+});
 
-<!-- GRAPH CARD -->
-<div class="card p-3 mb-3">
+function toggleDD(e, id) {
+  e.stopPropagation();
+  const el  = document.getElementById(id);
+  const was = el.classList.contains('open');
+  // close all
+  document.querySelectorAll('.dd-wrap.open').forEach(d => d.classList.remove('open'));
+  if (!was) {
+    el.classList.add('open');
+    // Preview: scroll so dropdown+gap fits, then set max-height
+    if (id === 'dd-preview') {
+      const menuEl  = document.getElementById('menu-preview');
+      const gap     = 80;
+      const dropH   = 320;
+      const btnRect    = el.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - btnRect.bottom;
+      const needScroll = dropH + gap - spaceBelow;
+      if (needScroll > 0) {
+        window.scrollBy({ top: needScroll, behavior: 'smooth' });
+        setTimeout(() => {
+          const r2 = el.getBoundingClientRect();
+          menuEl.style.maxHeight = Math.max(120, window.innerHeight - r2.bottom - gap) + 'px';
+        }, 320);
+      } else {
+        menuEl.style.maxHeight = Math.max(120, spaceBelow - gap) + 'px';
+      }
+    }
+  }
+}
 
-<div class="d-flex justify-content-between mb-2">
-<h6 class="m-0">Response Time</h6>
-<button class="btn btn-sm btn-secondary" onclick="resetZoom()">Reset</button>
-</div>
+// ── Build filter menus ────────────────────────────────────────────────────────
+// Service menu: sticky header block (search + select-all), scrollable rows below
+// Method/Status menus: simple scroll, no search
+function buildMenu(menuId, badgeId, values, withSearch) {
+  const menu = document.getElementById(menuId);
+  menu.innerHTML = '';
 
-<!-- ONLY ADD THIS WRAPPER -->
-<div class="graph-scroll">
-    <canvas id="apiChart"></canvas>
-</div>
+  if (withSearch) {
+    // ── Sticky top block: search input + Select All ──
+    const stickyHead = document.createElement('div');
+    stickyHead.style.cssText = [
+      'flex-shrink:0',
+      'background:var(--card-bg)',
+      'border-bottom:1px solid var(--card-border)',
+      'padding:6px 0 0 0',
+    ].join(';');
 
-</div>
+    // Search input
+    const searchWrap = document.createElement('div');
+    searchWrap.style.cssText = 'padding:0 10px 6px 10px;';
+    const inp = document.createElement('input');
+    inp.type        = 'text';
+    inp.placeholder = 'Search\u2026';
+    inp.style.cssText = 'width:100%;padding:5px 9px;font-size:.82rem;border:1px solid var(--input-border);border-radius:5px;background:var(--input-bg);color:var(--text);outline:none;';
+    inp.addEventListener('click', ev => ev.stopPropagation());
+    inp.addEventListener('input', () => {
+      const q = inp.value.toLowerCase();
+      scrollWrap.querySelectorAll('.dd-row[data-value]').forEach(row => {
+        row.style.display = row.dataset.value.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+    searchWrap.appendChild(inp);
+    stickyHead.appendChild(searchWrap);
 
+    // Select All — also in sticky head
+    const allLabel = document.createElement('label');
+    allLabel.className = 'dd-row';
+    allLabel.style.cssText = 'font-weight:600;padding:6px 14px;border-bottom:none;min-width:0;';
+    const allChk = document.createElement('input');
+    allChk.type = 'checkbox'; allChk.checked = true;
+    allLabel.appendChild(allChk);
+    const allSpan = document.createElement('span'); allSpan.textContent = 'Select All';
+    allLabel.appendChild(allSpan);
+    stickyHead.appendChild(allLabel);
 
-<div class="card p-3 mb-3">
-<h5>Error Messages (<span id="errorCount">0</span>)</h5>
-<div id="errorList" class="api-scroll"></div>
-</div>
+    menu.appendChild(stickyHead);
 
+    // ── Scrollable rows ──
+    const scrollWrap = document.createElement('div');
+    scrollWrap.style.cssText = 'overflow-y:auto;flex:1;min-height:0;';
+    scrollWrap.style.maxHeight = '220px';
 
-<div class="card p-3 mb-4">
-<h5>Failure Analysis (<span id="failureCount">0</span>)</h5>
-<div id="failureList" class="api-scroll"></div>
-</div>
+    values.forEach(v => {
+      const lbl = document.createElement('label');
+      lbl.className = 'dd-row'; lbl.dataset.value = v;
+      const chk = document.createElement('input');
+      chk.type = 'checkbox'; chk.checked = true; chk.dataset.item = v;
+      chk.style.cssText = 'flex-shrink:0;';
+      const sp = document.createElement('span');
+      sp.textContent = v; sp.title = v;
+      sp.style.cssText = 'flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace;font-size:.8rem;';
+      lbl.appendChild(chk); lbl.appendChild(sp);
+      scrollWrap.appendChild(lbl);
+      chk.addEventListener('change', () => {
+        const all  = scrollWrap.querySelectorAll('input[data-item]');
+        const chkd = scrollWrap.querySelectorAll('input[data-item]:checked');
+        allChk.indeterminate = chkd.length > 0 && chkd.length < all.length;
+        allChk.checked       = chkd.length === all.length;
+        refreshBadge(scrollWrap, badgeId, values.length); applyFilter();
+      });
+    });
+    allChk.addEventListener('change', () => {
+      scrollWrap.querySelectorAll('input[data-item]').forEach(c => c.checked = allChk.checked);
+      refreshBadge(scrollWrap, badgeId, values.length); applyFilter();
+    });
 
+    menu.appendChild(scrollWrap);
+    refreshBadge(scrollWrap, badgeId, values.length);
 
-<footer class="footer">
-Internal Tool • For Team Use
-</footer>
+  } else {
+    // Simple menu (Method, Status) — no flex, plain scroll via .dd-menu max-height
+    const allLabel = document.createElement('label');
+    allLabel.className = 'dd-row';
+    allLabel.style.cssText = 'font-weight:600;border-bottom:1px solid var(--card-border);';
+    const allChk = document.createElement('input');
+    allChk.type = 'checkbox'; allChk.checked = true;
+    allLabel.appendChild(allChk);
+    const allSpan = document.createElement('span'); allSpan.textContent = 'Select All';
+    allLabel.appendChild(allSpan);
+    menu.appendChild(allLabel);
 
-</div>
+    values.forEach(v => {
+      const lbl = document.createElement('label');
+      lbl.className = 'dd-row'; lbl.dataset.value = v;
+      const chk = document.createElement('input');
+      chk.type = 'checkbox'; chk.checked = true; chk.dataset.item = v;
+      const sp = document.createElement('span'); sp.textContent = v;
+      lbl.appendChild(chk); lbl.appendChild(sp);
+      menu.appendChild(lbl);
+      chk.addEventListener('change', () => {
+        const all  = menu.querySelectorAll('input[data-item]');
+        const chkd = menu.querySelectorAll('input[data-item]:checked');
+        allChk.indeterminate = chkd.length > 0 && chkd.length < all.length;
+        allChk.checked       = chkd.length === all.length;
+        refreshBadge(menu, badgeId, values.length); applyFilter();
+      });
+    });
+    allChk.addEventListener('change', () => {
+      menu.querySelectorAll('input[data-item]').forEach(c => c.checked = allChk.checked);
+      refreshBadge(menu, badgeId, values.length); applyFilter();
+    });
+    refreshBadge(menu, badgeId, values.length);
+  }
+}
 
-<script src="script.js"></script>
+function refreshBadge(scopeEl, badgeId, total) {
+  const n = scopeEl.querySelectorAll('input[data-item]:checked').length;
+  const b = document.getElementById(badgeId);
+  if (n === 0 || n === total) { b.textContent = ''; b.style.display = 'none'; }
+  else { b.textContent = n; b.style.display = 'inline-flex'; }
+}
+function getChecked(menuId) {
+  return [...document.querySelectorAll('#' + menuId + ' input[data-item]:checked')].map(c => c.dataset.item);
+}
+function buildFilters() {
+  const methods  = [...new Set(globalData.apis.map(a => a.method))].sort();
+  const services = [...new Set(globalData.apis.map(a => a.endpoint))].sort();
+  const statuses = [...new Set(globalData.apis.map(a => String(a.status)))].sort();
+  buildMenu('menu-method',  'badge-method',  methods,  false);
+  buildMenu('menu-service', 'badge-service', services, true);
+  buildMenu('menu-status',  'badge-status',  statuses, false);
+}
+function clearFilters() {
+  ['menu-method','menu-service','menu-status'].forEach(menuId => {
+    document.getElementById(menuId).querySelectorAll('input').forEach(c => { c.checked = true; c.indeterminate = false; });
+    const total = document.getElementById(menuId).querySelectorAll('input[data-item]').length;
+    const scope = document.getElementById(menuId).querySelector('[data-value]')?.closest('div') ||
+                  document.getElementById(menuId);
+    refreshBadge(document.getElementById(menuId), menuId.replace('menu-','badge-'), total);
+  });
+  applyFilter();
+}
 
+// ── Summary ───────────────────────────────────────────────────────────────────
+function renderSummary() {
+  const s = globalData.summary;
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-cell"><div class="stat-label">Total APIs</div><div class="stat-value">${s.total}</div></div>
+    <div class="stat-cell"><div class="stat-label">Average</div><div class="stat-value ${(s.avg/1000)>2?'amber':''}">${(s.avg/1000).toFixed(2)} s</div></div>
+    <div class="stat-cell"><div class="stat-label">Slowest</div><div class="stat-value ${(s.max/1000)>5?'red':'amber'}">${(s.max/1000).toFixed(2)} s</div></div>
+    <div class="stat-cell"><div class="stat-label">Errors</div><div class="stat-value ${s.failed>0?'red':''}">${s.failed}</div></div>`;
+}
+function renderFilteredSummary(apis) {
+  if (!apis.length) {
+    document.getElementById('statGrid').innerHTML = `
+      <div class="stat-cell"><div class="stat-label">Total APIs</div><div class="stat-value">0</div></div>
+      <div class="stat-cell"><div class="stat-label">Average</div><div class="stat-value">\u2014 s</div></div>
+      <div class="stat-cell"><div class="stat-label">Slowest</div><div class="stat-value">\u2014 s</div></div>
+      <div class="stat-cell"><div class="stat-label">Errors</div><div class="stat-value">0</div></div>`; return;
+  }
+  const total  = apis.length;
+  const avg    = apis.reduce((s, a) => s + a.time, 0) / total;
+  const max    = Math.max(...apis.map(a => a.time));
+  const failed = apis.filter(a => a.status >= 400).length;
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-cell"><div class="stat-label">Total APIs</div><div class="stat-value">${total}</div></div>
+    <div class="stat-cell"><div class="stat-label">Average</div><div class="stat-value ${(avg/1000)>2?'amber':''}">${(avg/1000).toFixed(2)} s</div></div>
+    <div class="stat-cell"><div class="stat-label">Slowest</div><div class="stat-value ${(max/1000)>5?'red':'amber'}">${(max/1000).toFixed(2)} s</div></div>
+    <div class="stat-cell"><div class="stat-label">Errors</div><div class="stat-value ${failed>0?'red':''}">${failed}</div></div>`;
+}
+
+// ── Filter ────────────────────────────────────────────────────────────────────
+function getFilteredApis() {
+  if (!globalData) return [];
+  const methods  = getChecked('menu-method');
+  const services = getChecked('menu-service');
+  const statuses = getChecked('menu-status');
+  return globalData.apis.filter(a =>
+    methods.includes(a.method) && services.includes(a.endpoint) && statuses.includes(String(a.status))
+  );
+}
+function applyFilter() {
+  currentApis = getFilteredApis();
+  renderFilteredSummary(currentApis);
+  setupChart(currentApis);
+  renderErrors(currentApis);
+  buildPreviewMenu(currentApis);
+}
+
+// ── Y ticks ───────────────────────────────────────────────────────────────────
+function niceMax(rawMax) {
+  if (rawMax <= 0) return 1;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawMax))), norm = rawMax / mag;
+  let nice;
+  if      (norm <= 1)  nice = 1;
+  else if (norm <= 2)  nice = 2;
+  else if (norm <= 5)  nice = 5;
+  else if (norm <= 10) nice = 10;
+  else                  nice = 20;
+  return nice * mag;
+}
+function niceTicks(yMax, count) {
+  const step = yMax / count, ticks = [];
+  for (let i = 0; i <= count; i++) ticks.push(Math.round(step * i * 10) / 10);
+  return ticks;
+}
+function fmtTick(v) {
+  if (v === 0) return '0 s';
+  if (v >= 10) return Math.round(v) + ' s';
+  if (v >= 1)  return v.toFixed(1) + ' s';
+  return v.toFixed(2) + ' s';
+}
+
+// ── Chart ─────────────────────────────────────────────────────────────────────
+function ptColor(ms) {
+  if (ms < 1000) return '#22c55e';
+  if (ms < 2000) return '#f97316';
+  return '#ef4444';
+}
+function setupChart(apis) {
+  const n = apis.length;
+  viewStart = 0; viewCount = n;
+  const outer  = document.getElementById('graphOuter');
+  const outerW = outer.clientWidth || 900;
+  const dataW  = Math.max(n * PX_PER_PT, outerW);
+  const wrapper = document.getElementById('chartWrapper');
+  wrapper.style.width  = dataW + 'px';
+  wrapper.style.height = CHART_H + 'px';
+  const canvas  = document.getElementById('apiCanvas');
+  canvas.width  = dataW; canvas.height = CHART_H;
+  const overlay = document.getElementById('yAxisOverlay');
+  overlay.style.height = CHART_H + 'px';
+  const yc = document.getElementById('yAxisCanvas');
+  yc.width = Y_AXIS_W; yc.height = CHART_H;
+  redraw(apis); drawYAxis(apis);
+
+  if (window._chartAbort) window._chartAbort.abort();
+  window._chartAbort = new AbortController();
+  const sig = { signal: window._chartAbort.signal };
+
+  canvas.addEventListener('mousemove', e => onHover(e, apis, canvas), sig);
+  canvas.addEventListener('mouseleave', () => onLeave(apis), sig);
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect  = canvas.getBoundingClientRect();
+    const mx    = e.clientX - rect.left;
+    const plotW = canvas.width - PAD.left - PAD.right;
+    const frac  = Math.max(0, Math.min(1, (mx - PAD.left) / plotW));
+    const factor = e.deltaY < 0 ? 0.75 : 1.35;
+    const newCnt = Math.max(5, Math.min(n, viewCount * factor));
+    const pivot  = viewStart + frac * (viewCount - 1);
+    viewCount = newCnt;
+    viewStart = Math.max(0, Math.min(n - viewCount, pivot - frac * (viewCount - 1)));
+    redraw(apis); drawYAxis(apis);
+  }, { passive:false, signal:window._chartAbort.signal });
+  canvas.addEventListener('mousedown', e => {
+    isDragging = true; dragStartX = e.clientX; dragStartView = viewStart;
+    canvas.style.cursor = 'grabbing';
+  }, sig);
+  document.addEventListener('mouseup', () => {
+    if (isDragging) { isDragging = false; canvas.style.cursor = 'crosshair'; }
+  }, sig);
+  canvas.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const plotW = canvas.width - PAD.left - PAD.right;
+    const dIdx  = -((e.clientX - dragStartX) / plotW) * (viewCount - 1);
+    viewStart   = Math.max(0, Math.min(n - viewCount, dragStartView + dIdx));
+    redraw(apis); drawYAxis(apis);
+  }, sig);
+}
+function getYMax(apis) {
+  const vStart = Math.max(0, Math.floor(viewStart));
+  const vEnd   = Math.min(apis.length - 1, Math.ceil(viewStart + viewCount - 1));
+  return niceMax(Math.max(...apis.slice(vStart, vEnd + 1).map(a => a.time / 1000), 0.5) * 1.1);
+}
+function redraw(apis) {
+  const canvas = document.getElementById('apiCanvas');
+  if (!canvas || !apis.length) return;
+  const W = canvas.width, H = canvas.height;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  const n = apis.length;
+  const plotW = W - PAD.left - PAD.right, plotH = H - PAD.top - PAD.bottom;
+  const vStart = Math.max(0, Math.floor(viewStart));
+  const vEnd   = Math.min(n - 1, Math.ceil(viewStart + viewCount - 1));
+  if (vStart >= vEnd) return;
+  const yMax = getYMax(apis); lastYMax = yMax;
+  const ticks = niceTicks(yMax, 5);
+  const xPos = idx => PAD.left + ((idx - viewStart) / Math.max(viewCount - 1, 1)) * plotW;
+  const yPos = sec => PAD.top  + plotH * (1 - sec / yMax);
+  ticks.forEach(v => {
+    ctx.strokeStyle = cssVar('--grid-line'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.left, yPos(v)); ctx.lineTo(W - PAD.right, yPos(v)); ctx.stroke();
+  });
+  const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + plotH);
+  grad.addColorStop(0, cssVar('--chart-fill0')); grad.addColorStop(1, cssVar('--chart-fill1'));
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.moveTo(xPos(vStart), yPos(0));
+  for (let i = vStart; i <= vEnd; i++) ctx.lineTo(xPos(i), yPos(apis[i].time / 1000));
+  ctx.lineTo(xPos(vEnd), yPos(0)); ctx.closePath(); ctx.fill();
+  ctx.lineWidth = 1.8; ctx.lineJoin = 'round';
+  for (let i = vStart; i < vEnd; i++) {
+    ctx.strokeStyle = ptColor(Math.max(apis[i].time, apis[i+1].time));
+    ctx.beginPath();
+    ctx.moveTo(xPos(i),     yPos(apis[i].time   / 1000));
+    ctx.lineTo(xPos(i + 1), yPos(apis[i+1].time / 1000));
+    ctx.stroke();
+  }
+}
+function drawYAxis(apis) {
+  const yc = document.getElementById('yAxisCanvas');
+  if (!yc || !apis.length) return;
+  const W = yc.width, H = yc.height;
+  const ctx = yc.getContext('2d');
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = cssVar('--chart-bg'); ctx.fillRect(0, 0, W, H);
+  const plotH = H - PAD.top - PAD.bottom;
+  const yMax  = lastYMax || getYMax(apis);
+  const ticks = niceTicks(yMax, 5);
+  ctx.font = '11px system-ui, sans-serif'; ctx.textAlign = 'right';
+  ticks.forEach(v => {
+    const y = PAD.top + plotH * (1 - v / yMax);
+    ctx.strokeStyle = cssVar('--card-border'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(6, y); ctx.stroke();
+    ctx.fillStyle = cssVar('--text-faint');
+    ctx.fillText(fmtTick(v), W - 4, y + 4);
+  });
+}
+
+// ── Hover ─────────────────────────────────────────────────────────────────────
+function onHover(e, apis, canvas) {
+  const rect  = canvas.getBoundingClientRect();
+  const mx    = e.clientX - rect.left;
+  const plotW = canvas.width - PAD.left - PAD.right;
+  const frac  = Math.max(0, Math.min(1, (mx - PAD.left) / plotW));
+  const i     = Math.max(0, Math.min(apis.length - 1, Math.round(viewStart + frac * (viewCount - 1))));
+  const a     = apis[i]; if (!a) return;
+  const color = ptColor(a.time);
+  document.getElementById('hoverInfo').innerHTML =
+    `<b style="color:${color}">#${i+1}</b> &nbsp; ${a.method} ${a.endpoint}` +
+    ` &nbsp;|&nbsp; <b style="color:${color}">${(a.time/1000).toFixed(2)} s</b>` +
+    ` &nbsp;|&nbsp; ${a.status}`;
+  const tt = document.getElementById('chartTooltip');
+  tt.innerHTML =
+    `<span style="color:#64748b;font-size:.72rem;letter-spacing:.04em">API #${i+1}</span><br>` +
+    `<b style="color:#e2e8f0">${a.method}</b> <span style="color:#94a3b8">${a.endpoint}</span><br>` +
+    `<span style="color:#64748b">Status</span> ${a.status}` +
+    `&nbsp;&nbsp;<span style="color:#64748b">Time</span> <span style="color:${color};font-weight:700">${(a.time/1000).toFixed(2)} s</span><br>` +
+    `<span style="color:#64748b">Reason</span> ${a.reason}`;
+  tt.style.display = 'block';
+  const ttW = 420;
+  let tx = e.clientX + 16;
+  if (tx + ttW > window.innerWidth - 16) tx = e.clientX - ttW - 16;
+  tt.style.left = tx + 'px'; tt.style.top = (e.clientY - 70) + 'px';
+  redraw(apis);
+  const ctx2  = canvas.getContext('2d');
+  const plotW2 = canvas.width - PAD.left - PAD.right;
+  const plotH  = canvas.height - PAD.top - PAD.bottom;
+  const xp = PAD.left + ((i - viewStart) / Math.max(viewCount - 1, 1)) * plotW2;
+  const yp = PAD.top  + plotH * (1 - (a.time / 1000) / lastYMax);
+  ctx2.beginPath(); ctx2.arc(xp, yp, 5, 0, Math.PI * 2);
+  ctx2.fillStyle = color; ctx2.fill();
+  ctx2.strokeStyle = '#fff'; ctx2.lineWidth = 2; ctx2.stroke();
+}
+function onLeave(apis) {
+  document.getElementById('hoverInfo').textContent = 'Hover over chart to inspect an API call';
+  document.getElementById('chartTooltip').style.display = 'none';
+  redraw(apis);
+}
+function resetZoom() {
+  viewStart = 0; viewCount = currentApis.length;
+  redraw(currentApis); drawYAxis(currentApis);
+}
+
+// ── Errors ────────────────────────────────────────────────────────────────────
+function methodBadge(m) {
+  const cls = ['GET','POST','PUT','DELETE'].includes(m) ? 'method-' + m : 'method-OTHER';
+  return `<span class="method-badge ${cls}">${m}</span>`;
+}
+function renderErrors(apis) {
+  const errs = apis.filter(a => a.error_message || a.status >= 400);
+  const cnt  = document.getElementById('errorCount');
+  cnt.textContent = errs.length;
+  cnt.className   = 'section-count' + (errs.length ? '' : ' zero');
+  document.getElementById('errorList').innerHTML = errs.length
+    ? errs.map(a => `
+        <div class="list-item">
+          ${methodBadge(a.method)}
+          <span style="color:var(--text-muted)">${a.endpoint}</span>
+          &nbsp;<span style="font-size:.78rem;font-weight:700;color:${a.status>=400?'#ef4444':'#f97316'}">${a.status}</span>
+          <br>
+          <span style="font-size:.78rem;color:var(--text-faint)">
+            Time: <b>${(a.time/1000).toFixed(2)} s</b> &nbsp;&middot;&nbsp;
+            Reason: <span style="color:#ef4444">${a.reason}</span>
+            ${a.error_message ? `&nbsp;&middot;&nbsp;<span style="color:#ef4444">${a.error_message}</span>` : ''}
+          </span>
+        </div>`).join('')
+    : '<div class="list-item" style="color:var(--text-muted)">No errors or failures found.</div>';
+}
+
+// ── API Preview dropdown ──────────────────────────────────────────────────────
+// Upward-opening flex menu:
+//   ┌──────────────────────┐  ← scrollable rows (flex:1, overflow-y:auto)
+//   ├──────────────────────┤
+//   │  🔍 search (pinned)  │  ← flex-shrink:0, always visible at bottom
+//   └──────────────────────┘
+function buildPreviewMenu(apis) {
+  const menu = document.getElementById('menu-preview');
+  menu.innerHTML = '';
+
+  // Scrollable rows area
+  const rowsWrap = document.createElement('div');
+  rowsWrap.style.cssText = 'overflow-y:auto;flex:1;min-height:0;padding:5px 0;';
+
+  apis.forEach(a => {
+    const row         = document.createElement('div');
+    row.className     = 'dd-row preview-row';
+    row.dataset.label = (a.method + ' ' + a.endpoint + ' ' + a.status).toLowerCase();
+    row.style.cssText = 'gap:8px;flex-wrap:nowrap;overflow:hidden;min-width:0;';
+    const methodCls   = ['GET','POST','PUT','DELETE'].includes(a.method) ? 'method-' + a.method : 'method-OTHER';
+    const sc          = a.status >= 400 ? '#ef4444' : a.status >= 300 ? '#f97316' : '#22c55e';
+    const safeEp      = a.endpoint.replace(/"/g, '&quot;');
+    row.innerHTML = `
+      <span class="method-badge ${methodCls}" style="flex-shrink:0;">${a.method}</span>
+      <span title="${safeEp}" style="font-size:.8rem;color:var(--text);font-family:monospace;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${a.endpoint}</span>
+      <span style="font-size:.75rem;font-weight:700;flex-shrink:0;color:${sc};margin-left:4px;">${a.status}</span>`;
+    row.addEventListener('click', () => {
+      showPreview(a);
+      document.getElementById('previewLabel').textContent = a.method + '  ' + a.endpoint;
+      document.querySelectorAll('.dd-wrap.open').forEach(d => d.classList.remove('open'));
+    });
+    rowsWrap.appendChild(row);
+  });
+
+  // Search bar pinned at TOP (dropdown opens downward)
+  const searchWrap = document.createElement('div');
+  searchWrap.style.cssText = 'padding:8px 10px;border-bottom:1px solid var(--card-border);background:var(--card-bg);flex-shrink:0;';
+  const inp = document.createElement('input');
+  inp.type        = 'text';
+  inp.placeholder = '\ud83d\udd0d  Type to search APIs\u2026';
+  inp.style.cssText = 'width:100%;padding:6px 10px;font-size:.82rem;border:1px solid var(--input-border);border-radius:5px;background:var(--input-bg);color:var(--text);outline:none;';
+  inp.addEventListener('click', ev => ev.stopPropagation());
+  inp.addEventListener('input', ev => {
+    ev.stopPropagation();
+    const q = inp.value.toLowerCase();
+    let count = 0;
+    rowsWrap.querySelectorAll('.preview-row').forEach(r => {
+      const m = r.dataset.label.includes(q);
+      r.style.display = m ? '' : 'none';
+      if (m) count++;
+    });
+    let noRes = rowsWrap.querySelector('.no-result');
+    if (count === 0) {
+      if (!noRes) {
+        noRes = document.createElement('div');
+        noRes.className = 'no-result';
+        noRes.style.cssText = 'padding:12px 14px;font-size:.82rem;color:var(--text-faint);';
+        noRes.textContent = 'No APIs match your search.';
+        rowsWrap.appendChild(noRes);
+      }
+      noRes.style.display = '';
+    } else if (noRes) { noRes.style.display = 'none'; }
+  });
+  searchWrap.appendChild(inp);
+
+  // Assemble: search on top, rows scroll below
+  menu.appendChild(searchWrap);
+  menu.appendChild(rowsWrap);
+
+  // Reset search whenever dropdown closes
+  document.addEventListener('click', () => {
+    inp.value = '';
+    rowsWrap.querySelectorAll('.preview-row').forEach(r => r.style.display = '');
+    const nr = rowsWrap.querySelector('.no-result');
+    if (nr) nr.style.display = 'none';
+  });
+}
+
+function showPreview(a) {
+  const methodCls = ['GET','POST','PUT','DELETE'].includes(a.method) ? 'method-' + a.method : 'method-OTHER';
+  const mb = document.getElementById('previewMethod');
+  mb.textContent = a.method; mb.className = 'method-badge ' + methodCls;
+  document.getElementById('previewEndpoint').textContent = a.endpoint;
+  const statusEl = document.getElementById('previewStatus');
+  statusEl.textContent = 'HTTP ' + a.status;
+  statusEl.style.color = a.status >= 400 ? '#ef4444' : a.status >= 300 ? '#f97316' : '#22c55e';
+  document.getElementById('previewTime').textContent = (a.time / 1000).toFixed(2) + ' s';
+  const pre = document.getElementById('previewJson');
+  if (a.response) {
+    try { pre.textContent = JSON.stringify(JSON.parse(a.response), null, 2); }
+    catch { pre.textContent = a.response; }
+  } else { pre.textContent = 'No response body available.'; }
+  document.getElementById('previewContent').style.display  = 'block';
+  document.getElementById('previewEmpty').style.display    = 'none';
+  document.getElementById('previewClearBtn').style.display = '';
+}
+function clearPreview() {
+  document.getElementById('previewLabel').textContent      = 'Select an API\u2026';
+  document.getElementById('previewContent').style.display  = 'none';
+  document.getElementById('previewEmpty').style.display    = 'none';
+  document.getElementById('previewClearBtn').style.display = 'none';
+}
+
+// ── CSV ───────────────────────────────────────────────────────────────────────
+function downloadReport() {
+  if (!globalData) { alert('Analyze a file first.'); return; }
+  const apis = getFilteredApis();
+  let csv = 'Method,Endpoint,Status,Time(s),Reason,Error Message,URL,Response\n';
+  apis.forEach(a => {
+    const r = (a.response || '').replace(/"/g, '""').replace(/\n/g, ' ');
+    csv += `"${a.method}","${a.endpoint}",${a.status},${(a.time/1000).toFixed(2)},"${a.reason}","${a.error_message}","${a.url}","${r}"\n`;
+  });
+  const link = document.createElement('a');
+  link.href  = URL.createObjectURL(new Blob([csv], { type:'text/csv' }));
+  link.download = 'api_report.csv'; link.click();
+}
+</script>
 </body>
 </html>

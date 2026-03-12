@@ -3,10 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import json
+from analyzer import analyze_har
 
-app = FastAPI()
+app = FastAPI(root_path="/har-analyzer")
 
-# ✅ CORS
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,21 +16,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Serve static files
+# Static frontend
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# ✅ Load frontend
 @app.get("/")
 def home():
     return FileResponse("static/index.html")
 
 
-# ✅ Upload API
 @app.post("/upload")
 async def upload(file: UploadFile = File(...)):
-
     content = await file.read()
     har = json.loads(content)
 
-    return {"message": "File received", "entries": len(har["log"]["entries"])}
+    result = analyze_har(har)
+
+    return result
